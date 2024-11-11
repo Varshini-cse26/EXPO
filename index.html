@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Digital Bucket with Drag-and-Drop</title>
+    <style>
+        /* Reset margin and padding */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        /* Overall background and font settings */
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f0f4f8;
+            color: #333;
+            text-align: center;
+            padding: 20px;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 20px;
+            color: #007bff;
+        }
+
+        /* Product boxes with background color and bigger size */
+        .product {
+            display: block;
+            width: 200px;
+            margin: 20px auto;
+            cursor: pointer;
+            border-radius: 15px;
+            background: #fff;
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            padding: 20px;
+        }
+
+        .product img {
+            width: 100%;
+            height: 180px;
+            border-radius: 10px;
+            object-fit: cover;
+        }
+
+        .product p {
+            font-size: 1.2rem;
+            margin-top: 10px;
+            color: #555;
+        }
+
+        .product:hover {
+            transform: scale(1.05);
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Bucket and remove area with background colors */
+        #bucket, #remove-area {
+            width: 80%;
+            max-width: 400px;
+            height: 150px;
+            margin: 20px auto;
+            border: 2px solid #007bff;
+            border-radius: 8px;
+            background: #eef7ff; /* Light blue background */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.2rem;
+            color: #007bff;
+            text-align: center;
+            padding: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        #remove-area {
+            background: #f8d7da; /* Light red background */
+            border-color: red;
+            color: red;
+        }
+
+        #bucket p, #remove-area p {
+            margin: 0;
+        }
+
+        /* Cart total display */
+        .total {
+            font-size: 1.5rem;
+            margin-top: 20px;
+            color: #333;
+        }
+
+        /* Floating button to remove from cart */
+        .remove-item-btn {
+            display: none;
+            position: absolute;
+            background-color: red;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: opacity 0.3s;
+        }
+
+        .remove-item-btn.show {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <h1>Supermarket Digital Bucket</h1>
+    
+    <div id="products">
+        <div class="product" draggable="true" ondragstart="drag(event)" data-name="Apple" data-price="0.99">
+            <img src="apple.jpg" alt="Apple">
+            <p>Apple - $0.99</p>
+        </div>
+        <div class="product" draggable="true" ondragstart="drag(event)" data-name="Banana" data-price="0.59">
+            <img src="banana.jpg" alt="Banana">
+            <p>Banana - $0.59</p>
+        </div>
+    </div>
+
+    <div id="bucket" ondrop="dropInBucket(event)" ondragover="allowDrop(event)">
+        <p>Drop items here</p>
+    </div>
+
+    <div id="remove-area" ondrop="dropInRemoveArea(event)" ondragover="allowDrop(event)">
+        Drop here to remove item
+    </div>
+
+    <p class="total">Total: $<span id="total">0.00</span></p>
+
+    <script>
+        let cart = {};
+        let totalCost = 0.0;
+
+        function allowDrop(event) {
+            event.preventDefault();
+        }
+
+        function drag(event) {
+            const name = event.target.getAttribute("data-name");
+            const price = event.target.getAttribute("data-price");
+
+            event.dataTransfer.setData("name", name);
+            event.dataTransfer.setData("price", price);
+            event.dataTransfer.setData("source", event.target.closest('#products') ? 'products' : 'bucket');
+        }
+
+        function dropInBucket(event) {
+            event.preventDefault();
+
+            const name = event.dataTransfer.getData("name");
+            const price = parseFloat(event.dataTransfer.getData("price"));
+            const source = event.dataTransfer.getData("source");
+
+            if (name && !isNaN(price)) {
+                if (source === 'products') {
+                    addToCart(name, price);
+                }
+            }
+        }
+
+        function dropInRemoveArea(event) {
+            event.preventDefault();
+
+            const name = event.dataTransfer.getData("name");
+            const price = parseFloat(event.dataTransfer.getData("price"));
+            const source = event.dataTransfer.getData("source");
+
+            if (name && !isNaN(price)) {
+                if (source === 'bucket') {
+                    removeFromCart(name, price);
+                }
+            }
+        }
+
+        function addToCart(product, price) {
+            if (cart[product]) {
+                cart[product].quantity += 1;
+            } else {
+                cart[product] = { price: price, quantity: 1 };
+            }
+            totalCost += price;
+            updateBucketDisplay();
+        }
+
+        function removeFromCart(product, price) {
+            if (cart[product]) {
+                cart[product].quantity -= 1;
+                totalCost -= price;
+
+                if (cart[product].quantity === 0) {
+                    delete cart[product];
+                }
+                updateBucketDisplay();
+            }
+        }
+
+        function updateBucketDisplay() {
+            const bucket = document.getElementById("bucket");
+            const totalElement = document.getElementById("total");
+
+            bucket.innerHTML = '<p>Drop items here</p>';
+
+            for (let product in cart) {
+                const item = cart[product];
+                if (item.quantity > 0) {
+                    const itemElement = document.createElement("div");
+                    itemElement.className = "bucket-item";
+                    itemElement.draggable = true;
+                    itemElement.ondragstart = drag;
+                    itemElement.setAttribute("data-name", product);
+                    itemElement.setAttribute("data-price", item.price);
+                    itemElement.innerHTML = `<img src="${product.toLowerCase()}.jpg" alt="${product}" width="80px" height="80px">
+                                             <p>${product} x ${item.quantity}</p>`;
+                    bucket.appendChild(itemElement);
+                }
+            }
+
+            totalElement.textContent = totalCost.toFixed(2);
+        }
+    </script>
+</body>
+</html>
